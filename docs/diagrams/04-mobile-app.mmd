@@ -1,0 +1,54 @@
+graph TB
+    subgraph MobileApp["React Native App"]
+        Nav["RootNavigator.tsx"]
+
+        subgraph AuthScreens["Auth"]
+            SI["SignInScreen"]
+            SU["SignUpScreen"]
+        end
+
+        subgraph AppScreens["App Screens"]
+            Home["HomeScreen\n(Dashboard + Cat List)"]
+            AddCat["AddCatScreen"]
+            Profile["CatProfileScreen\n(Info + Weight Chart)"]
+            MealR["MealReminderScreen"]
+            MedR["MedicineReminderScreen"]
+            WeightL["WeightLogScreen"]
+            HealthR["HealthRecordsScreen"]
+        end
+
+        subgraph Services["Services"]
+            API["apiClient.ts\n(axios + auth header)"]
+            Auth["authService.ts\n(Cognito SDK)"]
+            Notif["notificationService.ts\n(Notifee)"]
+            Upload["uploadService.ts\n(S3 presign + upload)"]
+        end
+
+        subgraph Hooks["Data Hooks"]
+            hCats["useCats()"]
+            hRem["useReminders()"]
+            hWeight["useWeightLogs()"]
+            hHealth["useHealthRecords()"]
+        end
+
+        Types["types/index.ts"]
+        Config["config/env.ts"]
+    end
+
+    Nav --> AuthScreens
+    Nav --> AppScreens
+
+    Home --> hCats
+    Home --> hRem
+    Profile --> hWeight
+    HealthR --> hHealth
+
+    hCats --> API
+    hRem --> API
+    hWeight --> API
+    hHealth --> API
+
+    API --> Auth
+    API --> Config
+    AddCat --> Upload
+    AppScreens --> Notif

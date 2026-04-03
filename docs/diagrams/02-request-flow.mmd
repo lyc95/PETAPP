@@ -1,0 +1,45 @@
+sequenceDiagram
+    participant App as Mobile App
+    participant Cognito as Cognito
+    participant APIGW as API Gateway
+    participant Lambda as Rust Lambda
+    participant DDB as DynamoDB
+    participant S3 as S3
+
+    Note over App,S3: 1. Authentication
+    App->>Cognito: Sign in (email + password)
+    Cognito-->>App: JWT access token + refresh token
+
+    Note over App,S3: 2. Create a cat
+    App->>APIGW: POST /cats {name, breed, birthdate}
+    APIGW->>Lambda: Forward request
+    Lambda->>Lambda: Validate JWT, extract ownerId
+    Lambda->>DDB: PutItem to cats table
+    DDB-->>Lambda: OK
+    Lambda-->>App: 201 {data: {id, name, ...}}
+
+    Note over App,S3: 3. Upload photo
+    App->>APIGW: POST /uploads/presign {fileName, contentType}
+    APIGW->>Lambda: Forward request
+    Lambda->>S3: Generate pre-signed upload URL
+    S3-->>Lambda: Signed URL + objectKey
+    Lambda-->>App: {data: {uploadUrl, objectKey}}
+
+    App->>S3: PUT photo to uploadUrl (direct upload)
+    S3-->>App: 200 OK
+
+    Note over App,S3: 4. Link photo to cat
+    App->>APIGW: PUT /cats/{catId} {photoKey: objectKey}
+    APIGW->>Lambda: Forward request
+    Lambda->>DDB: UpdateItem, set photoKey
+    DDB-->>Lambda: OK
+    Lambda-->>App: 200 {data: {id, photoKey, ...}}
+
+    Note over App,S3: 5. View cat photo later
+    App->>APIGW: GET /files/{key}/url
+    APIGW->>Lambda: Forward request
+    Lambda->>S3: Generate pre-signed download URL
+    S3-->>Lambda: Signed URL (15 min TTL)
+    Lambda-->>App: {data: {downloadUrl}}
+    App->>S3: GET photo from downloadUrl
+    S3-->>App: Image data

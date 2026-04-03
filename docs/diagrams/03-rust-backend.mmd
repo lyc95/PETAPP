@@ -1,0 +1,52 @@
+graph LR
+    subgraph RustLambda["Rust Lambda (axum)"]
+        main["main.rs\nLambda entry + router"]
+
+        subgraph MW["Middleware"]
+            jwt["auth/middleware.rs\nJWT validation"]
+            claims["auth/claims.rs\nToken claims struct"]
+        end
+
+        subgraph Routes["Route Handlers"]
+            health["health.rs\nGET /health"]
+            cats["cats.rs\nCRUD /cats"]
+            meal["meal_reminders.rs\nCRUD meal reminders"]
+            med["medicine_reminders.rs\nCRUD medicine reminders"]
+            weight["weight_logs.rs\nCRUD weight logs"]
+            hr["health_records.rs\nCRUD health records"]
+            upload["uploads.rs\nPre-signed URLs"]
+        end
+
+        subgraph DB["DynamoDB Repos"]
+            dc["cats_repo.rs"]
+            dm["meal_repo.rs"]
+            dmed["medicine_repo.rs"]
+            dw["weight_repo.rs"]
+            dh["health_repo.rs"]
+        end
+
+        subgraph Models["Models"]
+            mc["cat.rs"]
+            mm["meal_reminder.rs"]
+            mmed["medicine_reminder.rs"]
+            mw["weight_log.rs"]
+            mh["health_record.rs"]
+            resp["api_response.rs"]
+        end
+
+        s3mod["s3/mod.rs\nPre-sign helpers"]
+        err["errors/mod.rs\nAppError enum"]
+        cfg["config/mod.rs\nEnv vars"]
+    end
+
+    main --> MW
+    MW --> Routes
+    cats --> dc
+    meal --> dm
+    med --> dmed
+    weight --> dw
+    hr --> dh
+    upload --> s3mod
+    Routes --> err
+    Routes --> Models
+    DB --> cfg

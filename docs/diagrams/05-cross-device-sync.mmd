@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant Android as Android
+    participant API as Rust API
+    participant DDB as DynamoDB
+    participant iPhone as iPhone
+
+    Android->>API: POST /cats (create "Mochi")
+    API->>DDB: PutItem
+    DDB-->>API: OK
+    API-->>Android: 201 Created
+
+    Note over Android,iPhone: iPhone does not know yet
+
+    iPhone->>API: GET /cats (screen focus or pull-to-refresh)
+    API->>DDB: Query by ownerId
+    DDB-->>API: [Mochi, ...]
+    API-->>iPhone: 200 {data: [Mochi, ...]}
+
+    Note over Android,iPhone: Both devices now show Mochi

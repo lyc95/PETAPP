@@ -1,0 +1,41 @@
+graph TB
+    subgraph Devices["Mobile Devices"]
+        Android["Android"]
+        iPhone["iPhone"]
+    end
+
+    subgraph AWS["AWS Cloud"]
+        APIGW["API Gateway\n(HTTP API v2)"]
+        Cognito["Cognito\n(User Pool)"]
+
+        subgraph Lambda["Lambda (Rust)"]
+            Axum["axum Router"]
+            JWT["JWT Middleware"]
+            Handlers["Route Handlers"]
+        end
+
+        subgraph Storage["Data Layer"]
+            DDB["DynamoDB\n(5 tables)"]
+            S3["S3 Bucket\n(Photos and Files)"]
+        end
+
+        CW["CloudWatch\n(Logs)"]
+    end
+
+    Android -- "1. Sign in" --> Cognito
+    iPhone -- "1. Sign in" --> Cognito
+    Cognito -- "JWT Token" --> Android
+    Cognito -- "JWT Token" --> iPhone
+
+    Android -- "2. API calls\n(Bearer token)" --> APIGW
+    iPhone -- "2. API calls\n(Bearer token)" --> APIGW
+
+    APIGW --> JWT
+    JWT --> Handlers
+    Handlers -- "Read/Write" --> DDB
+    Handlers -- "Pre-signed URLs" --> S3
+
+    Android -- "3. Upload photos\n(pre-signed URL)" --> S3
+    iPhone -- "3. Upload photos\n(pre-signed URL)" --> S3
+
+    Lambda --> CW
