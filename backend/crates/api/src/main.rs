@@ -7,8 +7,11 @@ use tracing_subscriber::EnvFilter;
 
 mod auth;
 mod config;
+mod db;
 mod errors;
+mod models;
 mod routes;
+mod s3;
 mod state;
 
 use auth::{auth_middleware, JwksCache};
@@ -25,13 +28,11 @@ async fn main() -> Result<(), Error> {
     let config = Config::from_env().expect("failed to load config from env");
     let cfg = Arc::new(config);
 
-    // Fetch Cognito JWKS and cache signing keys.
     let jwks = JwksCache::new();
     jwks.load(&cfg.cognito_jwks_url)
         .await
         .expect("failed to load JWKS");
 
-    // AWS SDK clients (shared across requests via Arc).
     let aws_cfg = aws_config::defaults(aws_config::BehaviorVersion::latest())
         .load()
         .await;
@@ -53,12 +54,13 @@ async fn main() -> Result<(), Error> {
     // Public routes — no auth required.
     let public = Router::new().route("/health", get(routes::health::handler));
 
-    // Protected routes — JWT middleware applied to all routes in this group.
-    // Phase 3+ routes are added here.
-    let protected = Router::new().route_layer(middleware::from_fn_with_state(
-        state.clone(),
-        auth_middleware,
-    ));
+    // Protected routes — all require a valid Cognito JWT.
+    let protected = routes::cats::router()
+        .merge(routes::uploads::router())
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth_middleware,
+        ));
 
     let app = public
         .merge(protected)

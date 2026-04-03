@@ -6,6 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { AddCatScreen } from '../screens/AddCatScreen';
+import { CatProfileScreen } from '../screens/CatProfileScreen';
+import type { Cat } from '../types';
 
 // ---------------------------------------------------------------------------
 // Navigation param lists
@@ -18,6 +21,8 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   Home: undefined;
+  AddCat: undefined;
+  CatProfile: { cat: Cat };
 };
 
 // ---------------------------------------------------------------------------
@@ -39,7 +44,13 @@ function AuthNavigator() {
 function AppNavigator() {
   return (
     <AppStack.Navigator>
-      <AppStack.Screen name="Home" component={HomeScreen} />
+      <AppStack.Screen name="Home" component={HomeScreen} options={{ title: 'My Cats' }} />
+      <AppStack.Screen name="AddCat" component={AddCatScreen} options={{ title: 'Add Cat' }} />
+      <AppStack.Screen
+        name="CatProfile"
+        component={CatProfileScreen}
+        options={({ route }) => ({ title: route.params.cat.name })}
+      />
     </AppStack.Navigator>
   );
 }
@@ -67,9 +78,5 @@ export function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

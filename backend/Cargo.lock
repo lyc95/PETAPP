@@ -41,6 +41,7 @@ dependencies = [
  "aws-sdk-dynamodb",
  "aws-sdk-s3",
  "axum",
+ "base64",
  "chrono",
  "jsonwebtoken",
  "lambda_http",
