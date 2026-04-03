@@ -94,11 +94,7 @@ pub async fn auth_middleware(
     let header = decode_header(token).map_err(|_| AppError::Unauthorized)?;
     let kid = header.kid.ok_or(AppError::Unauthorized)?;
 
-    let decoding_key = state
-        .jwks
-        .find(&kid)
-        .await
-        .ok_or(AppError::Unauthorized)?;
+    let decoding_key = state.jwks.find(&kid).await.ok_or(AppError::Unauthorized)?;
 
     let mut validation = Validation::new(Algorithm::RS256);
     validation.set_issuer(&[state.config.cognito_issuer()]);
@@ -115,9 +111,9 @@ pub async fn auth_middleware(
         AppError::Unauthorized
     })?;
 
-    request
-        .extensions_mut()
-        .insert(AuthUser { sub: data.claims.sub });
+    request.extensions_mut().insert(AuthUser {
+        sub: data.claims.sub,
+    });
 
     Ok(next.run(request).await)
 }

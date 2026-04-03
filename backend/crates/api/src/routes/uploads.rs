@@ -12,11 +12,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthUser,
-    errors::AppError,
-    models::api_response::ApiResponse,
-    s3,
-    state::AppState,
+    auth::AuthUser, errors::AppError, models::api_response::ApiResponse, s3, state::AppState,
 };
 
 pub fn router() -> Router<Arc<AppState>> {
@@ -94,5 +90,7 @@ async fn get_file_url(
     .await
     .map_err(AppError::Internal)?;
 
-    Ok(Json(ApiResponse::ok(json!({ "downloadUrl": download_url }))))
+    Ok(Json(ApiResponse::ok(
+        json!({ "downloadUrl": download_url }),
+    )))
 }

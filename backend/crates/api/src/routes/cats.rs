@@ -37,8 +37,7 @@ async fn list_cats(
     Extension(auth): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<ApiList<Cat>>, AppError> {
-    let cats =
-        cats_repo::list_by_owner(&state.dynamo, &state.config.cats_table, &auth.sub).await?;
+    let cats = cats_repo::list_by_owner(&state.dynamo, &state.config.cats_table, &auth.sub).await?;
     Ok(Json(ApiList::ok(cats)))
 }
 
@@ -88,9 +87,14 @@ async fn update_cat(
     if let Some(bd) = &req.birthdate {
         parse_date(bd)?;
     }
-    let cat =
-        cats_repo::update(&state.dynamo, &state.config.cats_table, &cat_id, &auth.sub, &req)
-            .await?;
+    let cat = cats_repo::update(
+        &state.dynamo,
+        &state.config.cats_table,
+        &cat_id,
+        &auth.sub,
+        &req,
+    )
+    .await?;
     Ok(Json(ApiResponse::ok(cat)))
 }
 
@@ -110,4 +114,34 @@ async fn delete_cat(
 fn parse_date(s: &str) -> Result<NaiveDate, AppError> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| AppError::BadRequest("invalid birthdate; expected YYYY-MM-DD".to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_date_valid() {
+        assert!(parse_date("2021-05-10").is_ok());
+    }
+
+    #[test]
+    fn parse_date_future_date_ok() {
+        assert!(parse_date("2030-01-01").is_ok());
+    }
+
+    #[test]
+    fn parse_date_slash_format_rejected() {
+        assert!(parse_date("10/05/2021").is_err());
+    }
+
+    #[test]
+    fn parse_date_free_text_rejected() {
+        assert!(parse_date("not-a-date").is_err());
+    }
+
+    #[test]
+    fn parse_date_partial_rejected() {
+        assert!(parse_date("2021-05").is_err());
+    }
 }

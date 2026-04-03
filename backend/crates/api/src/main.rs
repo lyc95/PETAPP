@@ -62,10 +62,7 @@ async fn main() -> Result<(), Error> {
             auth_middleware,
         ));
 
-    let app = public
-        .merge(protected)
-        .layer(cors)
-        .with_state(state);
+    let app = public.merge(protected).layer(cors).with_state(state);
 
     run(app).await
 }

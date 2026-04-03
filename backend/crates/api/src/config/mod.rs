@@ -46,3 +46,37 @@ impl Config {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(pool_id: &str) -> Config {
+        Config {
+            cats_table: "t".to_string(),
+            meal_reminders_table: "t".to_string(),
+            medicine_reminders_table: "t".to_string(),
+            weight_logs_table: "t".to_string(),
+            health_records_table: "t".to_string(),
+            s3_bucket: "b".to_string(),
+            cognito_user_pool_id: pool_id.to_string(),
+            cognito_jwks_url: "u".to_string(),
+        }
+    }
+
+    #[test]
+    fn cognito_issuer_us_east_1() {
+        assert_eq!(
+            config("us-east-1_AbCdEfGhI").cognito_issuer(),
+            "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_AbCdEfGhI"
+        );
+    }
+
+    #[test]
+    fn cognito_issuer_ap_southeast_1() {
+        assert_eq!(
+            config("ap-southeast-1_XyZ12345").cognito_issuer(),
+            "https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_XyZ12345"
+        );
+    }
+}

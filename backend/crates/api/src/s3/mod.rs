@@ -20,7 +20,12 @@ pub async fn presign_put(
     Ok(presigned.uri().to_string())
 }
 
-pub async fn presign_get(s3: &Client, bucket: &str, key: &str, ttl: Duration) -> anyhow::Result<String> {
+pub async fn presign_get(
+    s3: &Client,
+    bucket: &str,
+    key: &str,
+    ttl: Duration,
+) -> anyhow::Result<String> {
     let config = PresigningConfig::expires_in(ttl)?;
     let presigned = s3
         .get_object()
