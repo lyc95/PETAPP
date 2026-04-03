@@ -24,3 +24,5 @@ lambda_http = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 jsonwebtoken = { workspace = true }
+reqwest = { workspace = true }
+anyhow = { workspace = true }
