@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Cat-Care Rust Backend
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: provided.al2023
+    Architectures:
+      - arm64
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+
+Resources:
+  CatCareApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Stage
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+
+  CatCareFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: rust-cargolambda
+    Properties:
+      CodeUri: ../backend
+      Handler: bootstrap
+      Environment:
+        Variables:
+          CATS_TABLE: !Sub "catcare-cats-${Stage}"
+          MEAL_REMINDERS_TABLE: !Sub "catcare-meal-reminders-${Stage}"
+          MEDICINE_REMINDERS_TABLE: !Sub "catcare-medicine-reminders-${Stage}"
+          WEIGHT_LOGS_TABLE: !Sub "catcare-weight-logs-${Stage}"
+          HEALTH_RECORDS_TABLE: !Sub "catcare-health-records-${Stage}"
+          S3_BUCKET: !Ref UploadsBucket
+          COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+          COGNITO_JWKS_URL: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPool}/.well-known/jwks.json"
+          RUST_LOG: info
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CatsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MealRemindersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MedicineRemindersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WeightLogsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref HealthRecordsTable
+        - S3CrudPolicy:
+            BucketName: !Ref UploadsBucket
+      Events:
+        ApiCatchAll:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CatCareApi
+            Path: /{proxy+}
+            Method: ANY
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "catcare-users-${Stage}"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "catcare-app-${Stage}"
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+
+  CatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "catcare-cats-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+        - { AttributeName: ownerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: ownerId-index
+          KeySchema:
+            - { AttributeName: ownerId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+
+  MealRemindersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "catcare-meal-reminders-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+        - { AttributeName: catId, AttributeType: S }
+        - { AttributeName: ownerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: catId-index
+          KeySchema:
+            - { AttributeName: catId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+        - IndexName: ownerId-index
+          KeySchema:
+            - { AttributeName: ownerId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+
+  MedicineRemindersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "catcare-medicine-reminders-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+        - { AttributeName: catId, AttributeType: S }
+        - { AttributeName: ownerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: catId-index
+          KeySchema:
+            - { AttributeName: catId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+        - IndexName: ownerId-index
+          KeySchema:
+            - { AttributeName: ownerId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+
+  WeightLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "catcare-weight-logs-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+        - { AttributeName: catId, AttributeType: S }
+        - { AttributeName: loggedAt, AttributeType: S }
+        - { AttributeName: ownerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: catId-loggedAt-index
+          KeySchema:
+            - { AttributeName: catId, KeyType: HASH }
+            - { AttributeName: loggedAt, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+        - IndexName: ownerId-index
+          KeySchema:
+            - { AttributeName: ownerId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+
+  HealthRecordsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "catcare-health-records-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: id, AttributeType: S }
+        - { AttributeName: catId, AttributeType: S }
+        - { AttributeName: recordedAt, AttributeType: S }
+        - { AttributeName: ownerId, AttributeType: S }
+      KeySchema:
+        - { AttributeName: id, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: catId-recordedAt-index
+          KeySchema:
+            - { AttributeName: catId, KeyType: HASH }
+            - { AttributeName: recordedAt, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+        - IndexName: ownerId-index
+          KeySchema:
+            - { AttributeName: ownerId, KeyType: HASH }
+          Projection: { ProjectionType: ALL }
+
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "catcare-uploads-${Stage}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT]
+            AllowedOrigins: ["*"]
+            MaxAge: 3600
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${CatCareApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  UserPoolId:
+    Value: !Ref CognitoUserPool
+  UserPoolClientId:
+    Value: !Ref CognitoUserPoolClient
+  UploadsBucketName:
+    Value: !Ref UploadsBucket

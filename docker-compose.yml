@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  devcontainer:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace:cached
+      # Mount host Docker socket so SAM CLI can build Lambda images
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Named volumes for Cargo cache — keeps builds fast on re-create
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      # Keep the Rust build target dir in a volume (avoids slow Windows FS overlay)
+      - backend-target:/workspace/backend/target
+    command: sleep infinity
+    environment:
+      RUST_LOG: debug
+      AWS_DEFAULT_REGION: us-east-1
+      # DynamoDB Local endpoint for local dev
+      AWS_ENDPOINT_URL: http://dynamodb:8000
+      # Dummy credentials so AWS SDK doesn't error locally
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      # Table names (dev stage)
+      CATS_TABLE: catcare-cats-dev
+      MEAL_REMINDERS_TABLE: catcare-meal-reminders-dev
+      MEDICINE_REMINDERS_TABLE: catcare-medicine-reminders-dev
+      WEIGHT_LOGS_TABLE: catcare-weight-logs-dev
+      HEALTH_RECORDS_TABLE: catcare-health-records-dev
+    ports:
+      - "9000:9000"   # cargo lambda watch (backend API)
+      - "8081:8081"   # Metro bundler (React Native)
+    networks:
+      - catcare
+    depends_on:
+      - dynamodb
+
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    ports:
+      - "8000:8000"
+    networks:
+      - catcare
+
+networks:
+  catcare:
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  backend-target:

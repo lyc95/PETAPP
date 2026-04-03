@@ -1,0 +1,32 @@
+{
+  "name": "Cat-Care Dev",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode",
+
+  "forwardPorts": [9000, 8081, 8000],
+  "portsAttributes": {
+    "9000": { "label": "Backend API (cargo lambda watch)" },
+    "8081": { "label": "Metro Bundler (React Native)" },
+    "8000": { "label": "DynamoDB Local" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "ms-vscode.vscode-typescript-next",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "rust-analyzer.cargo.buildScripts.enable": true,
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}
