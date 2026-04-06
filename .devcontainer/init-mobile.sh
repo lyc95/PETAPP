@@ -11,16 +11,24 @@ fi
 
 echo "==> Generating React Native platform files (android/ + ios/)..."
 
+# Stub out 'pod' so RN CLI doesn't fail on Linux (CocoaPods is macOS-only).
+# Without this, the CLI treats the pod failure as fatal and rolls back the
+# entire template copy — leaving no android/ directory at all.
+MOCK_BIN=$(mktemp -d)
+printf '#!/bin/sh\nexit 0\n' > "$MOCK_BIN/pod"
+chmod +x "$MOCK_BIN/pod"
+export PATH="$MOCK_BIN:$PATH"
+
 # Init into a temp dir then copy platform dirs back
 TMPDIR=$(mktemp -d)
-npx react-native@0.74 init CatCare \
+npx react-native@0.79 init CatCare \
   --directory "$TMPDIR" \
   --skip-install \
   --pm npm
 
 cp -r "$TMPDIR/android" mobile/android
 cp -r "$TMPDIR/ios"     mobile/ios
-rm -rf "$TMPDIR"
+rm -rf "$TMPDIR" "$MOCK_BIN"
 
 echo "==> Installing npm dependencies..."
 cd mobile && npm install

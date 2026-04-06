@@ -3,7 +3,7 @@
   "dockerComposeFile": ["../docker-compose.yml"],
   "service": "devcontainer",
   "workspaceFolder": "/workspace",
-  "remoteUser": "vscode",
+  "remoteUser": "root",
 
   "forwardPorts": [9000, 8081, 8000],
   "portsAttributes": {
@@ -13,6 +13,10 @@
   },
 
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+  ],
 
   "customizations": {
     "vscode": {

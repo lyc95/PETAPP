@@ -23,6 +23,10 @@ services:
       # Dummy credentials so AWS SDK doesn't error locally
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
+      # ADB — forward to the ADB server running on the Windows host
+      # so "adb devices" and "run-android" can reach the emulator
+      ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
+      ANDROID_ADB_SERVER_PORT: 5037
       # Table names (dev stage)
       CATS_TABLE: catcare-cats-dev
       MEAL_REMINDERS_TABLE: catcare-meal-reminders-dev

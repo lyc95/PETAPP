@@ -3,6 +3,10 @@ set -e
 
 echo "==> Setting up Cat-Care dev environment..."
 
+# Install Claude Code CLI
+echo "==> Installing Claude Code..."
+npm install -g @anthropic-ai/claude-code
+
 # Install mobile npm dependencies if package.json exists
 if [ -f mobile/package.json ]; then
   echo "==> Installing mobile npm dependencies..."

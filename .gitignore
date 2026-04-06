@@ -31,3 +31,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# TEST NOTES
+TESTING.md

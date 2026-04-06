@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     unzip \
     xz-utils \
+    android-tools-adb \
     && rm -rf /var/lib/apt/lists/*
 
 # Node.js 20
