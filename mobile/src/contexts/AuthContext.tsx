@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     authService
       .getCurrentSession()
       .then(session => setIsAuthenticated(!!session))
+      .catch(() => setIsAuthenticated(false))
       .finally(() => setIsLoading(false));
   }, []);
 

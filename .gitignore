@@ -1,36 +1,49 @@
-# Rust
-backend/target/
-backend/**/*.rs.bk
+# ─── Rust / Backend ───────────────────────────────────────────────────────────
+target/
+**/*.rs.bk
 
-# Node / React Native
+# ─── Node / Mobile ────────────────────────────────────────────────────────────
+node_modules/
 mobile/node_modules/
-mobile/.expo/
-mobile/ios/Pods/
-mobile/ios/build/
-mobile/android/.gradle/
-mobile/android/app/build/
-mobile/android/build/
-mobile/.bundle/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# SAM
+# ─── React Native generated ───────────────────────────────────────────────────
+mobile/android/
+mobile/ios/
+mobile/.gradle/
+*.apk
+*.aab
+*.ipa
+*.keystore
+!debug.keystore
+
+# Metro bundler cache
+.metro-health-check*
+.metro/
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ─── AWS SAM / Infrastructure ─────────────────────────────────────────────────
 infra/.aws-sam/
+infra/samconfig.toml
+.aws-sam/
 
-# OS
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── OS / Editor ──────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# Environment
-.env
-.env.local
-
-# Docker
-docker-compose.override.yml
-
-# TEST NOTES
-TESTING.md
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/

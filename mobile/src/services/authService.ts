@@ -6,12 +6,16 @@ import {
 } from 'amazon-cognito-identity-js';
 import { COGNITO_CLIENT_ID, COGNITO_USER_POOL_ID } from '../config/env';
 
-const userPool = new CognitoUserPool({
-  UserPoolId: COGNITO_USER_POOL_ID,
-  ClientId: COGNITO_CLIENT_ID,
-});
+const isCognitoConfigured =
+  !COGNITO_USER_POOL_ID.startsWith('REPLACE') &&
+  !COGNITO_CLIENT_ID.startsWith('REPLACE');
+
+const userPool = isCognitoConfigured
+  ? new CognitoUserPool({ UserPoolId: COGNITO_USER_POOL_ID, ClientId: COGNITO_CLIENT_ID })
+  : null;
 
 function makeUser(email: string): CognitoUser {
+  if (!userPool) { throw new Error('Cognito is not configured'); }
   return new CognitoUser({ Username: email, Pool: userPool });
 }
 
@@ -31,6 +35,7 @@ export const authService = {
 
   signUp(email: string, password: string): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (!userPool) { reject(new Error('Cognito is not configured')); return; }
       userPool.signUp(email, password, [], [], (err) => {
         if (err) {
           reject(err);
@@ -54,12 +59,13 @@ export const authService = {
   },
 
   signOut(): void {
-    userPool.getCurrentUser()?.globalSignOut({ onSuccess: () => {}, onFailure: () => {} });
-    userPool.getCurrentUser()?.signOut();
+    userPool?.getCurrentUser()?.globalSignOut({ onSuccess: () => {}, onFailure: () => {} });
+    userPool?.getCurrentUser()?.signOut();
   },
 
   getCurrentSession(): Promise<CognitoUserSession | null> {
     return new Promise((resolve) => {
+      if (!userPool) { resolve(null); return; }
       const user = userPool.getCurrentUser();
       if (!user) {
         resolve(null);
@@ -82,6 +88,7 @@ export const authService = {
 
   refreshSession(): Promise<string | null> {
     return new Promise((resolve) => {
+      if (!userPool) { resolve(null); return; }
       const user = userPool.getCurrentUser();
       if (!user) {
         resolve(null);

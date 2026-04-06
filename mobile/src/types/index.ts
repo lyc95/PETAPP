@@ -67,6 +67,8 @@ export interface ApiSuccess<T> {
   data: T;
 }
 
+export type ApiResponse<T> = ApiSuccess<T>;
+
 export interface ApiList<T> {
   data: T[];
   count: number;

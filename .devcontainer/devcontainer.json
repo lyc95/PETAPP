@@ -5,10 +5,11 @@
   "workspaceFolder": "/workspace",
   "remoteUser": "root",
 
-  "forwardPorts": [9000, 8081, 8000],
+  "forwardPorts": [9000, 8081, 8082, 8000],
   "portsAttributes": {
     "9000": { "label": "Backend API (cargo lambda watch)" },
     "8081": { "label": "Metro Bundler (React Native)" },
+    "8082": { "label": "Metro Bundler (fallback)" },
     "8000": { "label": "DynamoDB Local" }
   },
 

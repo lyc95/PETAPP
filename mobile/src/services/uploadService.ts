@@ -1,6 +1,9 @@
 import apiClient from './apiClient';
 
 // Base64url encode an S3 key (slashes must not appear in URL path segments).
+// React Native provides global btoa at runtime via the Hermes engine.
+declare function btoa(input: string): string;
+
 function toBase64Url(str: string): string {
   return btoa(unescape(encodeURIComponent(str)))
     .replace(/\+/g, '-')

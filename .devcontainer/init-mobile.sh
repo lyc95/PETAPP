@@ -21,10 +21,11 @@ export PATH="$MOCK_BIN:$PATH"
 
 # Init into a temp dir then copy platform dirs back
 TMPDIR=$(mktemp -d)
-npx react-native@0.79 init CatCare \
+npx @react-native-community/cli@latest init CatCare \
   --directory "$TMPDIR" \
   --skip-install \
-  --pm npm
+  --pm npm \
+  --version 0.79.0
 
 cp -r "$TMPDIR/android" mobile/android
 cp -r "$TMPDIR/ios"     mobile/ios
