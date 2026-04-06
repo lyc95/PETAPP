@@ -1,5 +1,8 @@
+version = 0.1
+
 [default.global.parameters]
 stack_name = "catcare-dev"
+region = "ap-southeast-1"
 
 [default.build.parameters]
 cached = true
@@ -9,5 +12,8 @@ parallel = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
-region = "us-east-1"
-parameter_overrides = "Stage=dev"
+region = "ap-southeast-1"
+parameter_overrides = "Stage=\"dev\""
+s3_prefix = "catcare-dev"
+disable_rollback = true
+image_repositories = []

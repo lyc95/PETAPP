@@ -17,7 +17,7 @@ services:
     command: sleep infinity
     environment:
       RUST_LOG: debug
-      AWS_DEFAULT_REGION: us-east-1
+      AWS_DEFAULT_REGION: ap-southeast-1
       # DynamoDB Local endpoint for local dev
       AWS_ENDPOINT_URL: http://dynamodb:8000
       # Dummy credentials so AWS SDK doesn't error locally
@@ -27,12 +27,18 @@ services:
       # so "adb devices" and "run-android" can reach the emulator
       ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
       ANDROID_ADB_SERVER_PORT: 5037
+      # Local dev mode — bypasses JWT auth and JWKS loading
+      LOCAL_MODE: "true"
       # Table names (dev stage)
       CATS_TABLE: catcare-cats-dev
       MEAL_REMINDERS_TABLE: catcare-meal-reminders-dev
       MEDICINE_REMINDERS_TABLE: catcare-medicine-reminders-dev
       WEIGHT_LOGS_TABLE: catcare-weight-logs-dev
       HEALTH_RECORDS_TABLE: catcare-health-records-dev
+      # Placeholder values — not used in LOCAL_MODE
+      S3_BUCKET: local-bucket
+      COGNITO_USER_POOL_ID: local
+      COGNITO_JWKS_URL: http://localhost/unused
     ports:
       - "9000:9000"   # cargo lambda watch (backend API)
       - "8081:8081"   # Metro bundler (React Native)

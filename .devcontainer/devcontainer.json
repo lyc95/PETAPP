@@ -16,7 +16,8 @@
   "postCreateCommand": "bash .devcontainer/post-create.sh",
 
   "mounts": [
-    "source=${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+    "source=${localEnv:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.ssh/id_ed25519,target=/root/.ssh/id_ed25519,type=bind,consistency=cached"
   ],
 
   "customizations": {

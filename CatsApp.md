@@ -481,7 +481,7 @@ The Rust Lambda function reads these from the Lambda environment:
 | `WEIGHT_LOGS_TABLE` | `catcare-weight-logs` | DynamoDB table name |
 | `HEALTH_RECORDS_TABLE` | `catcare-health-records` | DynamoDB table name |
 | `S3_BUCKET` | `catcare-uploads-dev` | S3 bucket for photos/attachments |
-| `COGNITO_USER_POOL_ID` | `us-east-1_xxxxxxxx` | For JWT validation |
+| `COGNITO_USER_POOL_ID` | `ap-southeast-1_xxxxxxxx` | For JWT validation |
 | `COGNITO_JWKS_URL` | `https://cognito-idp.../.well-known/jwks.json` | JWKS endpoint |
 | `RUST_LOG` | `info` | Tracing log level |
 
@@ -802,8 +802,8 @@ export MEDICINE_REMINDERS_TABLE=catcare-medicine-reminders
 export WEIGHT_LOGS_TABLE=catcare-weight-logs
 export HEALTH_RECORDS_TABLE=catcare-health-records
 export S3_BUCKET=catcare-uploads-dev-123456789012
-export COGNITO_USER_POOL_ID=us-east-1_xxxxxxxx
-export COGNITO_JWKS_URL=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xxxxxxxx/.well-known/jwks.json
+export COGNITO_USER_POOL_ID=ap-southeast-1_xxxxxxxx
+export COGNITO_JWKS_URL=https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_xxxxxxxx/.well-known/jwks.json
 export RUST_LOG=debug
 
 cargo lambda watch
@@ -880,7 +880,7 @@ cd infra && sam deploy
 
 # Run integration tests against the deployed API
 cd backend
-API_URL=https://xxxxx.execute-api.us-east-1.amazonaws.com/dev cargo test --features integration
+API_URL=https://xxxxx.execute-api.ap-southeast-1.amazonaws.com/dev cargo test --features integration
 ```
 
 Integration tests should:
@@ -921,7 +921,7 @@ npx tsc --noEmit
 1. **Configure AWS CLI**
    ```bash
    aws configure
-   # Enter: AWS Access Key ID, Secret, Region (e.g. us-east-1), Output format (json)
+   # Enter: AWS Access Key ID, Secret, Region (e.g. ap-southeast-1), Output format (json)
    ```
 
 2. **Build the Rust Lambda binary**
@@ -938,7 +938,7 @@ npx tsc --noEmit
    ```
    SAM will ask:
    - Stack name: `catcare-dev`
-   - Region: `us-east-1` (or your preferred region)
+   - Region: `ap-southeast-1` (or your preferred region)
    - Confirm changes: `y`
    - Allow IAM role creation: `y`
    - Save to `samconfig.toml`: `y`

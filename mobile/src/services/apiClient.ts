@@ -1,14 +1,20 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../config/env';
+import { API_BASE_URL, LOCAL_MODE } from '../config/env';
 import { authService } from './authService';
 
 const apiClient = axios.create({ baseURL: API_BASE_URL });
 
-// Inject Cognito access token into every request.
+// Inject auth header on every request.
+// Local mode: X-User-Id header (backend bypasses JWT validation).
+// Prod mode: Cognito Bearer token.
 apiClient.interceptors.request.use(async config => {
-  const token = await authService.getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (LOCAL_MODE) {
+    config.headers['X-User-Id'] = 'local-dev-user';
+  } else {
+    const token = await authService.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });

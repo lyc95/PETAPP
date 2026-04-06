@@ -89,6 +89,18 @@ pub async fn auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Result<Response, AppError> {
+    // In local mode, trust the X-User-Id header directly — no JWT validation.
+    if state.config.local_mode {
+        let user_id = request
+            .headers()
+            .get("x-user-id")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("local-dev-user")
+            .to_string();
+        request.extensions_mut().insert(AuthUser { sub: user_id });
+        return Ok(next.run(request).await);
+    }
+
     let token = extract_bearer(&request)?;
 
     let header = decode_header(token).map_err(|_| AppError::Unauthorized)?;

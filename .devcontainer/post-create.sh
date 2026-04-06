@@ -3,6 +3,13 @@ set -e
 
 echo "==> Setting up Cat-Care dev environment..."
 
+# Fix SSH key permissions (mounted from host — Windows FS sets them too open)
+if [ -f /root/.ssh/id_ed25519 ]; then
+  chmod 700 /root/.ssh
+  chmod 600 /root/.ssh/id_ed25519
+  echo "==> SSH key permissions fixed."
+fi
+
 # Install Claude Code CLI
 echo "==> Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code
@@ -22,12 +29,15 @@ fi
 
 # Create local DynamoDB tables
 echo "==> Waiting for DynamoDB Local to be ready..."
-until aws dynamodb list-tables --endpoint-url http://dynamodb:8000 --region us-east-1 &>/dev/null; do
+until aws dynamodb list-tables --endpoint-url http://dynamodb:8000 --region ap-southeast-1 &>/dev/null; do
   sleep 1
 done
 
 echo "==> Creating DynamoDB tables..."
 bash .devcontainer/create-tables.sh
+
+echo "==> Seeding local development data..."
+bash .devcontainer/seed-local-data.sh
 
 echo ""
 echo "==> Dev environment ready!"

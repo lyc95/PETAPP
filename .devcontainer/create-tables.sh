@@ -3,7 +3,7 @@
 # Mirrors the SAM template table definitions (dev stage).
 
 ENDPOINT="http://dynamodb:8000"
-REGION="us-east-1"
+REGION="ap-southeast-1"
 STAGE="${STAGE:-dev}"
 
 aws_local() {

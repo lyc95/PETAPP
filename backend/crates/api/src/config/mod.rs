@@ -4,6 +4,7 @@ use std::env;
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub local_mode: bool,
     pub cats_table: String,
     pub meal_reminders_table: String,
     pub medicine_reminders_table: String,
@@ -19,16 +20,22 @@ impl Config {
         fn var(key: &str) -> Result<String, String> {
             env::var(key).map_err(|_| format!("missing env var: {key}"))
         }
+        fn opt_var(key: &str) -> String {
+            env::var(key).unwrap_or_default()
+        }
+
+        let local_mode = env::var("LOCAL_MODE").map(|v| v == "true").unwrap_or(false);
 
         Ok(Self {
+            local_mode,
             cats_table: var("CATS_TABLE")?,
             meal_reminders_table: var("MEAL_REMINDERS_TABLE")?,
             medicine_reminders_table: var("MEDICINE_REMINDERS_TABLE")?,
             weight_logs_table: var("WEIGHT_LOGS_TABLE")?,
             health_records_table: var("HEALTH_RECORDS_TABLE")?,
-            s3_bucket: var("S3_BUCKET")?,
-            cognito_user_pool_id: var("COGNITO_USER_POOL_ID")?,
-            cognito_jwks_url: var("COGNITO_JWKS_URL")?,
+            s3_bucket: opt_var("S3_BUCKET"),
+            cognito_user_pool_id: opt_var("COGNITO_USER_POOL_ID"),
+            cognito_jwks_url: opt_var("COGNITO_JWKS_URL"),
         })
     }
 
@@ -39,7 +46,7 @@ impl Config {
             .cognito_user_pool_id
             .split('_')
             .next()
-            .unwrap_or("us-east-1");
+            .unwrap_or("ap-southeast-1");
         format!(
             "https://cognito-idp.{}.amazonaws.com/{}",
             region, self.cognito_user_pool_id
@@ -53,6 +60,7 @@ mod tests {
 
     fn config(pool_id: &str) -> Config {
         Config {
+            local_mode: false,
             cats_table: "t".to_string(),
             meal_reminders_table: "t".to_string(),
             medicine_reminders_table: "t".to_string(),
