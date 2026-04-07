@@ -8,6 +8,7 @@ import { SignUpScreen } from '../screens/SignUpScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { AddCatScreen } from '../screens/AddCatScreen';
 import { CatProfileScreen } from '../screens/CatProfileScreen';
+import { MedicineRemindersScreen } from '../screens/MedicineRemindersScreen';
 import type { Cat } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,7 @@ export type AppStackParamList = {
   Home: undefined;
   AddCat: undefined;
   CatProfile: { cat: Cat };
+  MedicineReminders: { cat: Cat };
 };
 
 // ---------------------------------------------------------------------------
@@ -50,6 +52,11 @@ function AppNavigator() {
         name="CatProfile"
         component={CatProfileScreen}
         options={({ route }) => ({ title: route.params.cat.name })}
+      />
+      <AppStack.Screen
+        name="MedicineReminders"
+        component={MedicineRemindersScreen}
+        options={({ route }) => ({ title: `${route.params.cat.name} — Reminders` })}
       />
     </AppStack.Navigator>
   );

@@ -6,6 +6,7 @@ import { useCats } from '../hooks/useCats';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import type { Cat } from '../types';
 
+
 type Props = NativeStackScreenProps<AppStackParamList, 'CatProfile'>;
 
 export function CatProfileScreen({ route, navigation }: Props) {
@@ -132,6 +133,14 @@ export function CatProfileScreen({ route, navigation }: Props) {
             style={styles.button}
           >
             Edit
+          </Button>
+          <Button
+            mode="outlined"
+            icon="pill"
+            onPress={() => navigation.navigate('MedicineReminders', { cat })}
+            style={styles.button}
+          >
+            Medicine Reminders
           </Button>
           <Button
             mode="outlined"

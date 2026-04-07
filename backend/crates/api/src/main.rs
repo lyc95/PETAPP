@@ -64,6 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Protected routes — all require a valid Cognito JWT.
     let protected = routes::cats::router()
         .merge(routes::uploads::router())
+        .merge(routes::medicine_reminders::router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
