@@ -144,6 +144,22 @@ export function CatProfileScreen({ route, navigation }: Props) {
           </Button>
           <Button
             mode="outlined"
+            icon="scale"
+            onPress={() => navigation.navigate('WeightLog', { cat })}
+            style={styles.button}
+          >
+            Weight Log
+          </Button>
+          <Button
+            mode="outlined"
+            icon="medical-bag"
+            onPress={() => navigation.navigate('HealthRecords', { cat })}
+            style={styles.button}
+          >
+            Health Records
+          </Button>
+          <Button
+            mode="outlined"
             icon="delete"
             onPress={handleDelete}
             textColor="red"

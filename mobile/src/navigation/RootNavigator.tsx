@@ -9,6 +9,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { AddCatScreen } from '../screens/AddCatScreen';
 import { CatProfileScreen } from '../screens/CatProfileScreen';
 import { MedicineRemindersScreen } from '../screens/MedicineRemindersScreen';
+import { WeightLogScreen } from '../screens/WeightLogScreen';
+import { HealthRecordsScreen } from '../screens/HealthRecordsScreen';
 import type { Cat } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +27,8 @@ export type AppStackParamList = {
   AddCat: undefined;
   CatProfile: { cat: Cat };
   MedicineReminders: { cat: Cat };
+  WeightLog: { cat: Cat };
+  HealthRecords: { cat: Cat };
 };
 
 // ---------------------------------------------------------------------------
@@ -57,6 +61,16 @@ function AppNavigator() {
         name="MedicineReminders"
         component={MedicineRemindersScreen}
         options={({ route }) => ({ title: `${route.params.cat.name} — Reminders` })}
+      />
+      <AppStack.Screen
+        name="WeightLog"
+        component={WeightLogScreen}
+        options={({ route }) => ({ title: `${route.params.cat.name} — Weight` })}
+      />
+      <AppStack.Screen
+        name="HealthRecords"
+        component={HealthRecordsScreen}
+        options={({ route }) => ({ title: `${route.params.cat.name} — Health` })}
       />
     </AppStack.Navigator>
   );

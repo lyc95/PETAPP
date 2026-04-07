@@ -65,6 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let protected = routes::cats::router()
         .merge(routes::uploads::router())
         .merge(routes::medicine_reminders::router())
+        .merge(routes::weight_logs::router())
+        .merge(routes::health_records::router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
