@@ -1,5 +1,4 @@
 pub mod middleware;
+pub mod service;
 
-#[allow(unused_imports)]
-pub use middleware::AuthUser;
-pub use middleware::{auth_middleware, JwksCache};
+pub use middleware::{auth_middleware, AuthUser};

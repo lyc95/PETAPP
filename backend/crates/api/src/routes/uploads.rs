@@ -1,96 +1,104 @@
-use std::{sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
-    extract::{Extension, Path, State},
-    http::StatusCode,
+    body::Body,
+    extract::{Extension, Multipart, Path, State},
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use tokio::fs;
+use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthUser, errors::AppError, models::api_response::ApiResponse, s3, state::AppState,
-};
+use crate::{auth::AuthUser, errors::AppError, models::api_response::ApiResponse, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/uploads/presign", post(presign_upload))
-        .route("/files/:encodedKey/url", get(get_file_url))
-}
-
-// ---------------------------------------------------------------------------
-// Request / response types
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PresignRequest {
-    #[allow(dead_code)]
-    file_name: String,
-    content_type: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PresignResponse {
-    upload_url: String,
-    object_key: String,
+        .route("/uploads/file", post(upload_file))
+        .route("/files/*key", get(serve_file))
 }
 
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
-async fn presign_upload(
+/// Accept a multipart file upload, save to disk, return the object key.
+async fn upload_file(
     Extension(auth): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
-    Json(req): Json<PresignRequest>,
-) -> Result<(StatusCode, Json<ApiResponse<PresignResponse>>), AppError> {
-    let object_key = format!("photos/{}/{}", auth.sub, Uuid::new_v4());
-    let upload_url = s3::presign_put(
-        &state.s3,
-        &state.config.s3_bucket,
-        &object_key,
-        &req.content_type,
-        Duration::from_secs(300), // 5 min TTL
-    )
-    .await
-    .map_err(AppError::Internal)?;
+    mut multipart: Multipart,
+) -> Result<(StatusCode, Json<ApiResponse<serde_json::Value>>), AppError> {
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("multipart error: {e}")))?
+        .ok_or_else(|| AppError::BadRequest("no file field in request".to_string()))?;
+
+    let file_name = field.file_name().unwrap_or("upload").to_string();
+    let ext = std::path::Path::new(&file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+
+    let object_key = format!("{}/{}.{}", auth.id, Uuid::new_v4(), ext);
+    let file_path = PathBuf::from(&state.config.upload_dir).join(&object_key);
+
+    // Ensure owner directory exists
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent)
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("create dir: {e}")))?;
+    }
+
+    let bytes = field
+        .bytes()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("read file: {e}")))?;
+
+    fs::write(&file_path, &bytes)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("write file: {e}")))?;
 
     Ok((
-        StatusCode::OK,
-        Json(ApiResponse::ok(PresignResponse {
-            upload_url,
-            object_key,
-        })),
+        StatusCode::CREATED,
+        Json(ApiResponse::ok(
+            serde_json::json!({ "objectKey": object_key }),
+        )),
     ))
 }
 
-async fn get_file_url(
+/// Stream a file from disk to the client.
+async fn serve_file(
     Extension(_auth): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
-    Path(encoded_key): Path<String>,
-) -> Result<Json<ApiResponse<Value>>, AppError> {
-    let key_bytes = URL_SAFE_NO_PAD
-        .decode(&encoded_key)
-        .map_err(|_| AppError::BadRequest("invalid key encoding".to_string()))?;
+    Path(key): Path<String>,
+) -> Result<Response, AppError> {
+    // Prevent path traversal
+    if key.contains("..") {
+        return Err(AppError::BadRequest("invalid key".to_string()));
+    }
 
-    let key = String::from_utf8(key_bytes)
-        .map_err(|_| AppError::BadRequest("key is not valid UTF-8".to_string()))?;
+    let file_path = PathBuf::from(&state.config.upload_dir).join(&key);
+    let file = fs::File::open(&file_path)
+        .await
+        .map_err(|_| AppError::NotFound("file not found".to_string()))?;
 
-    let download_url = s3::presign_get(
-        &state.s3,
-        &state.config.s3_bucket,
-        &key,
-        Duration::from_secs(900), // 15 min TTL
-    )
-    .await
-    .map_err(AppError::Internal)?;
+    let mime = mime_guess(&key);
+    let stream = ReaderStream::new(file);
+    let body = Body::from_stream(stream);
 
-    Ok(Json(ApiResponse::ok(
-        json!({ "downloadUrl": download_url }),
-    )))
+    Ok(([(header::CONTENT_TYPE, mime)], body).into_response())
+}
+
+fn mime_guess(key: &str) -> &'static str {
+    match key.rsplit('.').next().unwrap_or("") {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "pdf" => "application/pdf",
+        _ => "application/octet-stream",
+    }
 }

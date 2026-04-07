@@ -27,19 +27,21 @@ if [ ! -d "mobile/android" ]; then
   echo "  Run once to create them: bash .devcontainer/init-mobile.sh"
 fi
 
-# Create local DynamoDB tables
-echo "==> Waiting for DynamoDB Local to be ready..."
-until aws dynamodb list-tables --endpoint-url http://dynamodb:8000 --region ap-southeast-1 &>/dev/null; do
+# Wait for PostgreSQL to be ready (docker-compose healthcheck handles this,
+# but we wait here too in case post-create runs before the DB is fully up)
+echo "==> Waiting for PostgreSQL to be ready..."
+until pg_isready -h postgres -U catcare -d catcare &>/dev/null; do
   sleep 1
 done
+echo "==> PostgreSQL is ready."
 
-echo "==> Creating DynamoDB tables..."
-bash .devcontainer/create-tables.sh
-
-echo "==> Seeding local development data..."
-bash .devcontainer/seed-local-data.sh
+# Migrations are applied automatically when cargo run starts, so no manual
+# step is needed here. The backend will create all tables on first launch.
 
 echo ""
 echo "==> Dev environment ready!"
-echo "    Backend:  cd backend && cargo lambda watch"
+echo "    Backend:  cd backend && cargo run"
 echo "    Mobile:   cd mobile  && npx react-native start"
+echo ""
+echo "    Backend API will be available at http://localhost:9000"
+echo "    PostgreSQL: postgres://catcare:dev@localhost:5432/catcare"

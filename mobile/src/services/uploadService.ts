@@ -1,57 +1,33 @@
 import apiClient from './apiClient';
-
-// Base64url encode an S3 key (slashes must not appear in URL path segments).
-// React Native provides global btoa at runtime via the Hermes engine.
-declare function btoa(input: string): string;
-
-function toBase64Url(str: string): string {
-  return btoa(unescape(encodeURIComponent(str)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
+import { API_BASE_URL } from '../config/env';
 
 export const uploadService = {
   /**
-   * Gets a presigned PUT URL from the backend, uploads the file directly to
-   * S3, and returns the S3 object key to store on the record.
+   * Upload a file to the backend (multipart POST) and return the object key.
+   * The key can be used with `getFileUrl` to build a display URL.
    */
-  async presignAndUpload(
-    localUri: string,
-    fileName: string,
-    contentType: string,
-  ): Promise<string> {
-    const { data } = await apiClient.post<{
-      data: { uploadUrl: string; objectKey: string };
-    }>('/uploads/presign', { fileName, contentType });
+  async upload(localUri: string, fileName: string, contentType: string): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: localUri,
+      name: fileName,
+      type: contentType,
+    } as unknown as Blob);
 
-    const { uploadUrl, objectKey } = data.data;
+    const { data } = await apiClient.post<{ data: { objectKey: string } }>(
+      '/uploads/file',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
 
-    // Fetch the file as a blob and PUT it directly to S3.
-    const fileRes = await fetch(localUri);
-    const blob = await fileRes.blob();
-
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: blob,
-    });
-
-    if (!uploadRes.ok) {
-      throw new Error(`S3 upload failed: ${uploadRes.status}`);
-    }
-
-    return objectKey;
+    return data.data.objectKey;
   },
 
   /**
-   * Returns a short-lived presigned GET URL for an S3 object key.
+   * Build the URL to display a file from its object key.
+   * The backend serves files at GET /files/:key.
    */
-  async getDownloadUrl(objectKey: string): Promise<string> {
-    const encoded = toBase64Url(objectKey);
-    const { data } = await apiClient.get<{ data: { downloadUrl: string } }>(
-      `/files/${encoded}/url`,
-    );
-    return data.data.downloadUrl;
+  getFileUrl(objectKey: string): string {
+    return `${API_BASE_URL}/files/${objectKey}`;
   },
 };

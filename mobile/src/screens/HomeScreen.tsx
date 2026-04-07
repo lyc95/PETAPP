@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CatCard } from '../components/CatCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useCats } from '../hooks/useCats';
+import { useDashboardSummary } from '../hooks/useDashboardSummary';
 import type { AppStackParamList } from '../navigation/RootNavigator';
 import type { Cat } from '../types';
 
@@ -14,18 +15,34 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 export function HomeScreen({ navigation }: Props) {
   const { signOut } = useAuth();
   const { cats, isLoading, error, fetchCats } = useCats();
+  const { summary, fetchSummary } = useDashboardSummary();
 
-  // Refetch whenever this screen gains focus (covers post-add/edit/delete).
   useFocusEffect(
     useCallback(() => {
-      fetchCats();
+      fetchCats().then(async () => {
+        // cats state updates asynchronously; re-read via the hook return
+        // so we trigger fetchSummary after cats load via the effect below.
+      });
     }, [fetchCats]),
   );
+
+  // Re-fetch summary whenever the cats list changes.
+  const handleRefresh = useCallback(async () => {
+    await fetchCats();
+  }, [fetchCats]);
+
+  // Fetch summary once cats are loaded.
+  React.useEffect(() => {
+    if (cats.length > 0) {
+      fetchSummary(cats);
+    }
+  }, [cats, fetchSummary]);
 
   const renderCat = ({ item }: { item: Cat }) => (
     <CatCard
       cat={item}
       onPress={() => navigation.navigate('CatProfile', { cat: item })}
+      summary={summary[item.id]}
     />
   );
 
@@ -43,7 +60,7 @@ export function HomeScreen({ navigation }: Props) {
           keyExtractor={c => c.id}
           renderItem={renderCat}
           contentContainerStyle={styles.list}
-          onRefresh={fetchCats}
+          onRefresh={handleRefresh}
           refreshing={isLoading}
         />
       )}

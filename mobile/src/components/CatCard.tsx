@@ -1,14 +1,17 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Card } from 'react-native-paper';
+import { DashboardSummary } from './DashboardSummary';
+import type { CatSummary } from '../hooks/useDashboardSummary';
 import type { Cat } from '../types';
 
 interface Props {
   cat: Cat;
   onPress: () => void;
+  summary?: CatSummary;
 }
 
-export function CatCard({ cat, onPress }: Props) {
+export function CatCard({ cat, onPress, summary }: Props) {
   return (
     <Card style={styles.card} onPress={onPress} mode="elevated">
       <Card.Title
@@ -22,6 +25,7 @@ export function CatCard({ cat, onPress }: Props) {
           />
         )}
       />
+      {summary != null && <DashboardSummary summary={summary} />}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod cats;
 pub mod health;
 pub mod health_records;

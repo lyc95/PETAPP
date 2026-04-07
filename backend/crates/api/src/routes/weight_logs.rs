@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     routing::get,
     Json, Router,
 };
 use chrono::Utc;
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -19,6 +20,14 @@ use crate::{
     },
     state::AppState,
 };
+
+const DEFAULT_LIMIT: i64 = 50;
+
+#[derive(Deserialize)]
+struct Pagination {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -40,15 +49,12 @@ async fn list_weight_logs(
     Extension(auth): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
     Path(cat_id): Path<Uuid>,
+    Query(pagination): Query<Pagination>,
 ) -> Result<Json<ApiList<WeightLog>>, AppError> {
-    let logs = weight_repo::list_by_cat(
-        &state.dynamo,
-        &state.config.weight_logs_table,
-        &cat_id,
-        &auth.sub,
-    )
-    .await?;
-    Ok(Json(ApiList::ok(logs)))
+    let limit = pagination.limit.unwrap_or(DEFAULT_LIMIT).min(200);
+    let offset = pagination.offset.unwrap_or(0).max(0);
+    let logs = weight_repo::list_by_cat(&state.db, &cat_id, &auth.id, limit, offset).await?;
+    Ok(Json(ApiList::new(logs)))
 }
 
 async fn create_weight_log(
@@ -67,14 +73,14 @@ async fn create_weight_log(
     let log = WeightLog {
         id: Uuid::new_v4(),
         cat_id,
-        owner_id: auth.sub,
+        owner_id: auth.id,
         weight_kg: req.weight_kg,
         logged_at,
         note: req.note,
         created_at: now,
         updated_at: now,
     };
-    weight_repo::create(&state.dynamo, &state.config.weight_logs_table, &log).await?;
+    weight_repo::create(&state.db, &log).await?;
     Ok((StatusCode::CREATED, Json(ApiResponse::ok(log))))
 }
 
@@ -94,14 +100,7 @@ async fn update_weight_log(
     if let Some(la) = &req.logged_at {
         parse_datetime(la)?;
     }
-    let log = weight_repo::update(
-        &state.dynamo,
-        &state.config.weight_logs_table,
-        &id,
-        &auth.sub,
-        &req,
-    )
-    .await?;
+    let log = weight_repo::update(&state.db, &id, &auth.id, &req).await?;
     Ok(Json(ApiResponse::ok(log)))
 }
 
@@ -110,13 +109,7 @@ async fn delete_weight_log(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    weight_repo::delete(
-        &state.dynamo,
-        &state.config.weight_logs_table,
-        &id,
-        &auth.sub,
-    )
-    .await?;
+    weight_repo::delete(&state.db, &id, &auth.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

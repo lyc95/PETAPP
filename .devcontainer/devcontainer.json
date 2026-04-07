@@ -5,12 +5,12 @@
   "workspaceFolder": "/workspace",
   "remoteUser": "root",
 
-  "forwardPorts": [9000, 8081, 8082, 8000],
+  "forwardPorts": [9000, 8081, 8082, 5432],
   "portsAttributes": {
-    "9000": { "label": "Backend API (cargo lambda watch)" },
+    "9000": { "label": "Backend API (cargo run)" },
     "8081": { "label": "Metro Bundler (React Native)" },
     "8082": { "label": "Metro Bundler (fallback)" },
-    "8000": { "label": "DynamoDB Local" }
+    "5432": { "label": "PostgreSQL" }
   },
 
   "postCreateCommand": "bash .devcontainer/post-create.sh",

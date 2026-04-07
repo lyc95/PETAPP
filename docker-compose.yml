@@ -7,54 +7,46 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/workspace:cached
-      # Mount host Docker socket so SAM CLI can build Lambda images
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Named volumes for Cargo cache — keeps builds fast on re-create
       - cargo-registry:/usr/local/cargo/registry
       - cargo-git:/usr/local/cargo/git
-      # Keep the Rust build target dir in a volume (avoids slow Windows FS overlay)
       - backend-target:/workspace/backend/target
+      - uploads:/workspace/uploads
     command: sleep infinity
     environment:
       RUST_LOG: debug
-      AWS_DEFAULT_REGION: ap-southeast-1
-      # DynamoDB Local endpoint for local dev
-      AWS_ENDPOINT_URL: http://dynamodb:8000
-      # Dummy credentials so AWS SDK doesn't error locally
-      AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
-      # ADB — forward to the ADB server running on the Windows host
-      # so "adb devices" and "run-android" can reach the emulator
+      DATABASE_URL: postgres://catcare:dev@postgres:5432/catcare
+      JWT_SECRET: dev-secret-change-in-prod
+      UPLOAD_DIR: /workspace/uploads
+      PORT: "9000"
       ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
       ANDROID_ADB_SERVER_PORT: 5037
-      # Local dev mode — bypasses JWT auth and JWKS loading
-      LOCAL_MODE: "true"
-      # Table names (dev stage)
-      CATS_TABLE: catcare-cats-dev
-      MEAL_REMINDERS_TABLE: catcare-meal-reminders-dev
-      MEDICINE_REMINDERS_TABLE: catcare-medicine-reminders-dev
-      WEIGHT_LOGS_TABLE: catcare-weight-logs-dev
-      HEALTH_RECORDS_TABLE: catcare-health-records-dev
-      # Placeholder values — not used in LOCAL_MODE
-      S3_BUCKET: local-bucket
-      COGNITO_USER_POOL_ID: local
-      COGNITO_JWKS_URL: http://localhost/unused
     ports:
-      - "9000:9000"   # cargo lambda watch (backend API)
-      - "8081:8081"   # Metro bundler (React Native)
-      - "8082:8082"   # Metro bundler fallback port
+      - "9000:9000"
+      - "8081:8081"
+      - "8082:8082"
     networks:
       - catcare
     depends_on:
-      - dynamodb
+      postgres:
+        condition: service_healthy
 
-  dynamodb:
-    image: amazon/dynamodb-local:latest
-    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: catcare
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: catcare
     ports:
-      - "8000:8000"
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - catcare
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catcare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 networks:
   catcare:
@@ -63,3 +55,5 @@ volumes:
   cargo-registry:
   cargo-git:
   backend-target:
+  postgres-data:
+  uploads:

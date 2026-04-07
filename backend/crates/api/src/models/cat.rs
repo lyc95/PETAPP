@@ -2,11 +2,11 @@ use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Cat {
     pub id: Uuid,
-    pub owner_id: String,
+    pub owner_id: Uuid,
     pub name: String,
     pub breed: String,
     pub birthdate: NaiveDate,

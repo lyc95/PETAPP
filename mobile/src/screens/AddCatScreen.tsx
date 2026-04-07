@@ -39,11 +39,7 @@ export function AddCatScreen({ navigation }: Props) {
 
     setUploading(true);
     try {
-      const key = await uploadService.presignAndUpload(
-        asset.uri,
-        asset.fileName,
-        asset.type,
-      );
+      const key = await uploadService.upload(asset.uri, asset.fileName, asset.type);
       setPhotoKey(key);
     } catch {
       setError('Photo upload failed. Please try again.');

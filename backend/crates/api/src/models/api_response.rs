@@ -18,7 +18,7 @@ pub struct ApiList<T: Serialize> {
 }
 
 impl<T: Serialize> ApiList<T> {
-    pub fn ok(data: Vec<T>) -> Self {
+    pub fn new(data: Vec<T>) -> Self {
         let count = data.len();
         Self { data, count }
     }

@@ -5,12 +5,12 @@ use uuid::Uuid;
 /// "VACCINATION" | "VET_VISIT" | "NOTE"
 pub type HealthRecordType = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct HealthRecord {
     pub id: Uuid,
     pub cat_id: Uuid,
-    pub owner_id: String,
+    pub owner_id: Uuid,
     pub record_type: HealthRecordType,
     pub title: String,
     pub description: String,

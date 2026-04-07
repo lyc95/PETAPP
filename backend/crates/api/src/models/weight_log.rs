@@ -2,12 +2,12 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct WeightLog {
     pub id: Uuid,
     pub cat_id: Uuid,
-    pub owner_id: String,
+    pub owner_id: Uuid,
     pub weight_kg: f64,
     /// ISO 8601 datetime — when the weight was measured
     pub logged_at: DateTime<Utc>,

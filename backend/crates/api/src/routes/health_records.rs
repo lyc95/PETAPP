@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     routing::get,
     Json, Router,
 };
 use chrono::Utc;
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
@@ -19,6 +20,14 @@ use crate::{
     },
     state::AppState,
 };
+
+const DEFAULT_LIMIT: i64 = 50;
+
+#[derive(Deserialize)]
+struct Pagination {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -40,15 +49,12 @@ async fn list_health_records(
     Extension(auth): Extension<AuthUser>,
     State(state): State<Arc<AppState>>,
     Path(cat_id): Path<Uuid>,
+    Query(pagination): Query<Pagination>,
 ) -> Result<Json<ApiList<HealthRecord>>, AppError> {
-    let records = health_repo::list_by_cat(
-        &state.dynamo,
-        &state.config.health_records_table,
-        &cat_id,
-        &auth.sub,
-    )
-    .await?;
-    Ok(Json(ApiList::ok(records)))
+    let limit = pagination.limit.unwrap_or(DEFAULT_LIMIT).min(200);
+    let offset = pagination.offset.unwrap_or(0).max(0);
+    let records = health_repo::list_by_cat(&state.db, &cat_id, &auth.id, limit, offset).await?;
+    Ok(Json(ApiList::new(records)))
 }
 
 async fn create_health_record(
@@ -57,12 +63,14 @@ async fn create_health_record(
     Path(cat_id): Path<Uuid>,
     Json(req): Json<CreateHealthRecordRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<HealthRecord>>), AppError> {
+    require_non_empty(&req.title, "title")?;
+    require_non_empty(&req.record_type, "recordType")?;
     let recorded_at = parse_datetime(&req.recorded_at)?;
     let now = Utc::now();
     let record = HealthRecord {
         id: Uuid::new_v4(),
         cat_id,
-        owner_id: auth.sub,
+        owner_id: auth.id,
         record_type: req.record_type,
         title: req.title,
         description: req.description,
@@ -71,7 +79,7 @@ async fn create_health_record(
         created_at: now,
         updated_at: now,
     };
-    health_repo::create(&state.dynamo, &state.config.health_records_table, &record).await?;
+    health_repo::create(&state.db, &record).await?;
     Ok((StatusCode::CREATED, Json(ApiResponse::ok(record))))
 }
 
@@ -84,14 +92,7 @@ async fn update_health_record(
     if let Some(ra) = &req.recorded_at {
         parse_datetime(ra)?;
     }
-    let record = health_repo::update(
-        &state.dynamo,
-        &state.config.health_records_table,
-        &id,
-        &auth.sub,
-        &req,
-    )
-    .await?;
+    let record = health_repo::update(&state.db, &id, &auth.id, &req).await?;
     Ok(Json(ApiResponse::ok(record)))
 }
 
@@ -100,19 +101,21 @@ async fn delete_health_record(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, AppError> {
-    health_repo::delete(
-        &state.dynamo,
-        &state.config.health_records_table,
-        &id,
-        &auth.sub,
-    )
-    .await?;
+    health_repo::delete(&state.db, &id, &auth.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+fn require_non_empty(s: &str, field: &str) -> Result<(), AppError> {
+    if s.trim().is_empty() {
+        Err(AppError::BadRequest(format!("{field} must not be empty")))
+    } else {
+        Ok(())
+    }
+}
 
 fn parse_datetime(s: &str) -> Result<chrono::DateTime<Utc>, AppError> {
     chrono::DateTime::parse_from_rfc3339(s)

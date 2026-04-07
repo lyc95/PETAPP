@@ -3,7 +3,6 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Snackbar, Text, TextInput } from 'react-native-paper';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
-import { LOCAL_MODE } from '../config/env';
 import type { AuthStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
@@ -36,12 +35,6 @@ export function SignInScreen({ navigation }: Props) {
       <Text variant="headlineMedium" style={styles.title}>
         Cat Care
       </Text>
-
-      {LOCAL_MODE && (
-        <Text variant="bodySmall" style={styles.localHint}>
-          Local mode — any email and password will work
-        </Text>
-      )}
 
       <TextInput
         label="Email"
@@ -109,10 +102,5 @@ const styles = StyleSheet.create({
   },
   link: {
     marginTop: 8,
-  },
-  localHint: {
-    textAlign: 'center',
-    marginBottom: 16,
-    opacity: 0.6,
   },
 });

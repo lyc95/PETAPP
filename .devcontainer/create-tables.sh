@@ -1,6 +1,7 @@
 #!/bin/bash
 # Creates all DynamoDB Local tables for local development.
 # Mirrors the SAM template table definitions (dev stage).
+# This is not used anymore since we are using pOSTGRESQL instead of DynamoDB, but we keep it here for reference.
 
 ENDPOINT="http://dynamodb:8000"
 REGION="ap-southeast-1"

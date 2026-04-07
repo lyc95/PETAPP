@@ -6,6 +6,8 @@ import {
 } from '../services/notificationService';
 import type { ApiList, ApiResponse, MedicineReminder } from '../types';
 
+const PAGE_SIZE = 50;
+
 interface CreateMedicineReminderInput {
   reminderType: string;
   label: string;
@@ -26,7 +28,10 @@ interface UpdateMedicineReminderInput {
 export function useMedicineReminders(catId: string, catName: string) {
   const [reminders, setReminders] = useState<MedicineReminder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const fetchReminders = useCallback(async () => {
     setIsLoading(true);
@@ -34,14 +39,37 @@ export function useMedicineReminders(catId: string, catName: string) {
     try {
       const res = await apiClient.get<ApiList<MedicineReminder>>(
         `/cats/${catId}/medicine-reminders`,
+        { params: { limit: PAGE_SIZE, offset: 0 } },
       );
       setReminders(res.data.data);
+      setOffset(PAGE_SIZE);
+      setHasMore(res.data.count === PAGE_SIZE);
     } catch {
       setError('Failed to load reminders. Please try again.');
     } finally {
       setIsLoading(false);
     }
   }, [catId]);
+
+  const loadMoreReminders = useCallback(async () => {
+    if (!hasMore || isLoadingMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    try {
+      const res = await apiClient.get<ApiList<MedicineReminder>>(
+        `/cats/${catId}/medicine-reminders`,
+        { params: { limit: PAGE_SIZE, offset } },
+      );
+      setReminders(prev => [...prev, ...res.data.data]);
+      setOffset(prev => prev + PAGE_SIZE);
+      setHasMore(res.data.count === PAGE_SIZE);
+    } catch {
+      setError('Failed to load more reminders. Please try again.');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [catId, hasMore, isLoadingMore, offset]);
 
   const createReminder = useCallback(
     async (input: CreateMedicineReminderInput): Promise<MedicineReminder> => {
@@ -77,5 +105,16 @@ export function useMedicineReminders(catId: string, catName: string) {
     await cancelNotification(id);
   }, []);
 
-  return { reminders, isLoading, error, fetchReminders, createReminder, updateReminder, deleteReminder };
+  return {
+    reminders,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    fetchReminders,
+    loadMoreReminders,
+    createReminder,
+    updateReminder,
+    deleteReminder,
+  };
 }

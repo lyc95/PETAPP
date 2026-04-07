@@ -1,144 +1,71 @@
 use std::sync::Arc;
 
 use axum::{
+    body::Body,
     extract::{Request, State},
+    http::StatusCode,
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
+    Json,
 };
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
-use serde::Deserialize;
-use tokio::sync::RwLock;
-use tracing::warn;
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use uuid::Uuid;
 
-use crate::{errors::AppError, state::AppState};
+use crate::state::AppState;
 
-// ---------------------------------------------------------------------------
-// JWKS cache
-// ---------------------------------------------------------------------------
-
-#[derive(Clone)]
-pub struct JwksCache(Arc<RwLock<Vec<CachedKey>>>);
-
-struct CachedKey {
-    kid: String,
-    key: DecodingKey,
-}
-
-#[derive(Deserialize)]
-struct JwkSet {
-    keys: Vec<Jwk>,
-}
-
-#[derive(Deserialize)]
-struct Jwk {
-    kid: String,
-    n: String,
-    e: String,
-}
-
-impl JwksCache {
-    pub fn new() -> Self {
-        Self(Arc::new(RwLock::new(vec![])))
-    }
-
-    /// Fetches the JWKS from Cognito and populates the in-memory cache.
-    /// Call once on startup from `main`.
-    pub async fn load(&self, url: &str) -> anyhow::Result<()> {
-        let set: JwkSet = reqwest::get(url).await?.json().await?;
-        let mut guard = self.0.write().await;
-        *guard = set
-            .keys
-            .into_iter()
-            .filter_map(|jwk| {
-                DecodingKey::from_rsa_components(&jwk.n, &jwk.e)
-                    .ok()
-                    .map(|key| CachedKey { kid: jwk.kid, key })
-            })
-            .collect();
-        tracing::info!("Loaded {} JWKS key(s)", guard.len());
-        Ok(())
-    }
-
-    async fn find(&self, kid: &str) -> Option<DecodingKey> {
-        self.0
-            .read()
-            .await
-            .iter()
-            .find(|k| k.kid == kid)
-            .map(|k| k.key.clone())
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Authenticated user — inserted into request extensions by the middleware
-// ---------------------------------------------------------------------------
-
-/// Authenticated caller. `sub` is the Cognito user ID used as `ownerId`.
-#[allow(dead_code)]
+/// The authenticated user extracted from a valid JWT.
 #[derive(Debug, Clone)]
 pub struct AuthUser {
-    pub sub: String,
+    pub id: Uuid,
 }
 
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: String, // user UUID
+    exp: i64,
+}
 
 pub async fn auth_middleware(
     State(state): State<Arc<AppState>>,
-    mut request: Request,
+    mut req: Request<Body>,
     next: Next,
-) -> Result<Response, AppError> {
-    // In local mode, trust the X-User-Id header directly — no JWT validation.
-    if state.config.local_mode {
-        let user_id = request
-            .headers()
-            .get("x-user-id")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("local-dev-user")
-            .to_string();
-        request.extensions_mut().insert(AuthUser { sub: user_id });
-        return Ok(next.run(request).await);
+) -> Response {
+    let token = match extract_bearer(&req) {
+        Some(t) => t,
+        None => return unauthorized("missing or invalid Authorization header"),
+    };
+
+    let key = DecodingKey::from_secret(state.config.jwt_secret.as_bytes());
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.set_issuer(&["catcare"]);
+    validation.set_audience(&["catcare"]);
+
+    match decode::<Claims>(token, &key, &validation) {
+        Ok(data) => {
+            let id = match Uuid::parse_str(&data.claims.sub) {
+                Ok(u) => u,
+                Err(_) => return unauthorized("invalid token subject"),
+            };
+            req.extensions_mut().insert(AuthUser { id });
+            next.run(req).await
+        }
+        Err(_) => unauthorized("invalid or expired token"),
     }
-
-    let token = extract_bearer(&request)?;
-
-    let header = decode_header(token).map_err(|_| AppError::Unauthorized)?;
-    let kid = header.kid.ok_or(AppError::Unauthorized)?;
-
-    let decoding_key = state.jwks.find(&kid).await.ok_or(AppError::Unauthorized)?;
-
-    let mut validation = Validation::new(Algorithm::RS256);
-    validation.set_issuer(&[state.config.cognito_issuer()]);
-    // Cognito access tokens use `client_id` instead of `aud` — skip aud check.
-    validation.validate_aud = false;
-
-    #[derive(Deserialize)]
-    struct Claims {
-        sub: String,
-    }
-
-    let data = decode::<Claims>(token, &decoding_key, &validation).map_err(|e| {
-        warn!("JWT validation failed: {e}");
-        AppError::Unauthorized
-    })?;
-
-    request.extensions_mut().insert(AuthUser {
-        sub: data.claims.sub,
-    });
-
-    Ok(next.run(request).await)
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn extract_bearer(request: &Request) -> Result<&str, AppError> {
-    request
-        .headers()
-        .get(axum::http::header::AUTHORIZATION)
+fn extract_bearer(req: &Request<Body>) -> Option<&str> {
+    req.headers()
+        .get("Authorization")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(AppError::Unauthorized)
+}
+
+fn unauthorized(message: &str) -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(json!({ "error": { "code": "UNAUTHORIZED", "message": message } })),
+    )
+        .into_response()
 }
